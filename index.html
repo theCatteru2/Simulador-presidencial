@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Campaña Presidencial</title>
+    <style>
+        :root {
+            --bg-base: #090d16;
+            --panel-bg: rgba(17, 24, 39, 0.85);
+            --card-border: #223049;
+            --accent-gold: #f59e0b;
+            --accent-blue: #38bdf8;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --text-light: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background: radial-gradient(circle at 50% 10%, #1e293b 0%, #060911 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        #app-frame {
+            width: 100%;
+            max-width: 920px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        header {
+            background: rgba(11, 15, 25, 0.95);
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title-badge {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stage-pill {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .screen {
+            display: none;
+            padding: 26px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 18px;
+        }
+
+        /* HUD Superior */
+        .hud-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+        }
+
+        .hud-box {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .hud-val {
+            font-size: 1.35rem;
+            font-weight: 800;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 8px;
+            background: #1e293b;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .bar-fill {
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+
+        /* Feed de Campaña */
+        .feed-box {
+            background: #07090e;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: var(--text-light);
+        }
+
+        /* Botonera de Acciones */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+        }
+
+        .action-card {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-gold);
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.2);
+        }
+
+        .action-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-desc {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            line-height: 1.35;
+        }
+
+        /* Modales */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(7, 10, 19, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            z-index: 50;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: #111827;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        /* Botones generales */
+        .btn-main {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #0b0f19;
+            border: none;
+            padding: 14px 22px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn-main:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-sub {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-light);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .btn-sub:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-blue);
+        }
+
+        input[type="text"] {
+            background: #0f172a;
+            border: 2px solid var(--card-border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: white;
+            font-size: 1.05rem;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-gold);
+        }
+
+        /* Escrutinio */
+        .tally-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 1.15rem;
+            font-weight: 700;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        footer {
+            background: #08090d;
+            border-top: 1px solid var(--card-border);
+            padding: 10px;
+            text-align: center;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-frame">
+    <header>
+        <div class="title-badge">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+            Simulador de Campaña
+        </div>
+        <div class="stage-pill" id="stage-badge">PASO</div>
+    </header>
+
+    <!-- INICIO -->
+    <section id="screen-home" class="screen active">
+        <div class="card" style="text-align: center; display: flex; flex-direction: column; gap: 8px;">
+            <h2 style="font-size: 1.5rem; color: var(--accent-gold);">Simulador de Campaña Presidencial</h2>
+            <p style="color: var(--text-dim);">Toma decisiones quincenales, administra el presupuesto público y disputa la presidencia.</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="btn-home-start" class="btn-main">Iniciar Nueva Campaña Electoral</button>
+            <button id="btn-home-rules" class="btn-sub" style="text-align: center; align-items: center;">Instrucciones y Mecánicas</button>
+        </div>
+    </section>
+
+    <!-- INSTRUCCIONES -->
+    <section id="screen-rules" class="screen">
+        <h3>Reglamento y Guía de Campaña</h3>
+        <div class="card" style="display: flex; flex-direction: column; gap: 10px; font-size: 0.95rem; line-height: 1.5;">
+            <p>• <strong>Votos vs. Imagen:</strong> La aprobación mide simpatía; la intención final surge del núcleo duro y la captura de votantes indecisos.</p>
+            <p>• <strong>Niebla de Datos:</strong> Los sondeos tienen margen de error. Adulterarlos para la prensa distorsiona tus mediciones internas.</p>
+            <p>• <strong>Regla de Fatiga:</strong> Reiterar la misma acción 3 veces consecutivas desgasta tu mensaje electoral (-4.5% aprobación).</p>
+            <p>• <strong>Riesgo de Escándalo:</strong> Granjas de bots y fake news elevan el riesgo. Sobre el 50% y 75% detonan denuncias y filtraciones.</p>
+            <p>• <strong>Polarización de Balotaje:</strong> En segunda vuelta las terceras fuerzas se redistribuyen en base a tu nivel de rechazo.</p>
+        </div>
+        <button id="btn-rules-back" class="btn-main">Volver al Inicio</button>
+    </section>
+
+    <!-- REGISTRO DEL CANDIDATO -->
+    <section id="screen-register" class="screen">
+        <h3>Lanzamiento de Candidatura</h3>
+        <p style="color: var(--text-dim); margin-top: -12px;">Ingresa el nombre del candidato/a (mínimo 3 caracteres):</p>
+        <input type="text" id="input-candidate" placeholder="Nombre y Apellido" autocomplete="off">
+        <button id="btn-register-submit" class="btn-main">Iniciar Campaña</button>
+    </section>
+
+    <!-- TABLERO PRINCIPAL / WAR ROOM -->
+    <section id="screen-dashboard" class="screen">
+        <!-- Encabezado de Turno y Recursos -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+            <div>
+                <h2 id="hud-candidate-name" style="font-size: 1.3rem;">Candidato</h2>
+                <span id="hud-time-display" style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 600;">Quincena 1 de 6 | 12 semanas restantes</span>
+            </div>
+            <div style="text-align: right;">
+                <span style="font-size: 0.8rem; color: var(--text-dim);">FONDOS PÚBLICOS</span>
+                <div id="hud-funds" style="font-size: 1.3rem; font-weight: 800; color: var(--accent-green);">$250.000</div>
+            </div>
+        </div>
+
+        <!-- Métricas Electorales -->
+        <div class="hud-grid">
+            <div class="hud-box">
+                <span class="hud-label">Intención Estimada</span>
+                <span class="hud-val" id="hud-voto-est" style="color: var(--accent-blue);">0.0%</span>
+                <span style="font-size: 0.75rem; color: var(--text-dim);">Núcleo: <strong id="hud-nucleo">18%</strong></span>
+            </div>
+            <div class="hud-box">
+                <span class="hud-label">Aprobación</span>
+                <span class="hud-val" id="hud-aprob">38.5%</span>
+                <div class="bar-container"><div id="bar-aprob" class="bar-fill" style="background: var(--accent-green); width: 38%;"></div></div>
+            </div>
+            <div class="hud-box">
+                <span class="hud-label">Desaprobación</span>
+                <span class="hud-val" id="hud-desaprob" style="color: var(--accent-red);">35.0%</span>
+                <div class="bar-container"><div id="bar-desaprob" class="bar-fill" style="background: var(--accent-red); width: 35%;"></div></div>
+            </div>
+            <div class="hud-box">
+                <span class="hud-label">Riesgo Escándalo</span>
+                <span class="hud-val" id="hud-riesgo" style="color: var(--accent-gold);">10%</span>
+                <div class="bar-container"><div id="bar-riesgo" class="bar-fill" style="background: var(--accent-gold); width: 10%;"></div></div>
+            </div>
+            <div class="hud-box">
+                <span class="hud-label">Coherencia</span>
+                <span class="hud-val" id="hud-coherencia">85/100</span>
+                <div class="bar-container"><div id="bar-coherencia" class="bar-fill" style="background: var(--accent-purple); width: 85%;"></div></div>
+            </div>
+        </div>
+
+        <!-- Feed de Campaña -->
+        <div class="feed-box" id="feed-display">
+            Planifica la quincena seleccionando una de las estrategias disponibles.
+        </div>
+
+        <!-- Opciones de Gestión -->
+        <div class="action-grid">
+            <div class="action-card" id="btn-act-redes">
+                <div class="action-title">📱 1. Campaña de Redes</div>
+                <div class="action-desc">Granjas de bots, influencers patrocinados y videos explicativos propios.</div>
+            </div>
+
+            <div class="action-card" id="btn-act-encuesta">
+                <div class="action-title">📊 2. Encuesta Pública</div>
+                <div class="action-desc">Sondeo electoral técnico interno o informe adulterado para prensa.</div>
+            </div>
+
+            <div class="action-card" id="btn-act-medios">
+                <div class="action-title">📺 3. Estrategias Mediáticas</div>
+                <div class="action-desc">Operaciones encubiertas, entrevistas televisivas y pauta oficial.</div>
+            </div>
+
+            <div class="action-card" id="btn-act-social">
+                <div class="action-title">🤝 4. Política de Ayuda Social</div>
+                <div class="action-desc">Propuesta de asistencia directa (penaliza si carece de coherencia previa).</div>
+            </div>
+
+            <div class="action-card" id="btn-act-acto">
+                <div class="action-title">📢 5. Acto Público Masivo</div>
+                <div class="action-desc">Convocatoria masiva a plazas. El aforo depende del riesgo de escándalo.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PANTALLA DE ESCRUTINIO ELECTORAL -->
+    <section id="screen-scrutiny" class="screen">
+        <h2 id="scrutiny-stage-title" style="color: var(--accent-gold); font-size: 1.4rem;">Escrutinio Definitivo</h2>
+        
+        <div class="card" style="display: flex; flex-direction: column; gap: 14px;">
+            <p id="scrutiny-progress-text" style="color: var(--text-dim); font-size: 0.9rem;">Procesando telegramas y mesas de votación...</p>
+            <div class="bar-container" style="height: 12px;"><div id="bar-scrutiny" class="bar-fill" style="background: var(--accent-gold); width: 0%;"></div></div>
+            
+            <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;" id="scrutiny-results-box">
+                <div class="tally-row">
+                    <span id="tally-cand-name">Tu Candidatura:</span>
+                    <span id="tally-cand-val" style="color: var(--accent-blue);">0.00%</span>
+                </div>
+                <div class="tally-row" id="row-op1">
+                    <span>Opositor Principal:</span>
+                    <span id="tally-op1-val" style="color: var(--accent-red);">0.00%</span>
+                </div>
+                <div class="tally-row" id="row-op2">
+                    <span>Tercera Fuerza:</span>
+                    <span id="tally-op2-val" style="color: var(--text-dim);">0.00%</span>
+                </div>
+            </div>
+
+            <div id="scrutiny-verdict" class="feed-box" style="margin-top: 8px; font-weight: 600;"></div>
+        </div>
+
+        <button id="btn-scrutiny-next" class="btn-main" style="display: none;">Continuar</button>
+    </section>
+
+    <!-- MODAL DE DECISIÓN -->
+    <div class="modal-overlay" id="modal-container">
+        <div class="modal-card">
+            <h3 id="modal-title" style="color: var(--accent-gold);">Estrategia</h3>
+            <div id="modal-body" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            <button id="btn-modal-cancel" class="btn-sub" style="text-align: center; align-items: center; border-color: var(--card-border);">Cancelar y volver al tablero</button>
+        </div>
+    </div>
+
+    <footer>
+        Simulador de Campaña Presidencial - Engine Web v2026
+    </footer>
+</div>
+
+<script>
+    // Generador pseudoaleatorio idéntico a C#
+    const rnd = {
+        next: function(min, max) {
+            return Math.floor(Math.random() * (max - min)) + min;
+        }
+    };
+
+    // Parámetros y estado de juego según Program_5.cs
+    let nombreCandidato = "Guerrera";
+
+    // Variables de estado interno real
+    let aprobacionReal = 38.5;
+    let desaprobacionReal = 35.0;
+    let nucleoDuro = 18.0;
+    let indecisos = 30.0;
+    let fondosPublicos = 250000.0;
+
+    let riesgoEscandalo = 10;
+    let coherenciaDiscursiva = 85;
+    let fatigaAccion = 0;
+    let ultimaCategoria = "ninguna";
+
+    // Opositores
+    let votoOpositor1 = 34.0;
+    let votoOpositor2 = 20.0;
+
+    const multiplicadorGasto = 1.15;
+    let etapa = 1; // 1: PASO, 2: Generales, 3: Balotaje
+    let turnoQuincenal = 1;
+    let maxTurnosEtapa = 6;
+    let campanaActiva = true;
+
+    // Enrutador de pantallas
+    const screens = {
+        home: document.getElementById('screen-home'),
+        rules: document.getElementById('screen-rules'),
+        register: document.getElementById('screen-register'),
+        dashboard: document.getElementById('screen-dashboard'),
+        scrutiny: document.getElementById('screen-scrutiny')
+    };
+
+    function showScreen(key) {
+        Object.values(screens).forEach(s => s.classList.remove('active'));
+        screens[key].classList.add('active');
+    }
+
+    // Modal
+    const modal = document.getElementById('modal-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+
+    function openModal(title, buttonsConfig) {
+        modalTitle.textContent = title;
+        modalBody.innerHTML = '';
+        buttonsConfig.forEach(cfg => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-sub';
+            btn.innerHTML = `<strong>${cfg.label}</strong><span style="font-size:0.8rem; color:var(--text-dim);">${cfg.sub || ''}</span>`;
+            btn.onclick = () => {
+                closeModal();
+                cfg.action();
+            };
+            modalBody.appendChild(btn);
+        });
+        modal.classList.add('active');
+    }
+
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+    document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
+
+    // --- NAVEGACIÓN INICIAL ---
+    document.getElementById('btn-home-rules').addEventListener('click', () => showScreen('rules'));
+    document.getElementById('btn-rules-back').addEventListener('click', () => showScreen('home'));
+    document.getElementById('btn-home-start').addEventListener('click', () => showScreen('register'));
+
+    document.getElementById('btn-register-submit').addEventListener('click', () => {
+        const val = document.getElementById('input-candidate').value.trim();
+        if (val.length < 3) {
+            alert("El nombre debe tener al menos 3 caracteres.");
+            return;
+        }
+        nombreCandidato = val;
+        startCampaign();
+    });
+
+    // --- INICIALIZACIÓN DE CAMPAÑA ---
+    function startCampaign() {
+        aprobacionReal = 38.5;
+        desaprobacionReal = 35.0;
+        nucleoDuro = 18.0;
+        indecisos = 30.0;
+        fondosPublicos = 250000.0;
+        riesgoEscandalo = 10;
+        coherenciaDiscursiva = 85;
+        fatigaAccion = 0;
+        ultimaCategoria = "ninguna";
+        votoOpositor1 = 34.0;
+        votoOpositor2 = 20.0;
+
+        etapa = 1;
+        campanaActiva = true;
+        initStage();
+    }
+
+    function initStage() {
+        maxTurnosEtapa = (etapa === 3) ? 4 : 6;
+        turnoQuincenal = 1;
+        updateStageBadge();
+        updateDashboard();
+        showScreen('dashboard');
+    }
+
+    function updateStageBadge() {
+        const badge = document.getElementById('stage-badge');
+        if (etapa === 1) badge.textContent = "PASO";
+        else if (etapa === 2) badge.textContent = "GENERALES";
+        else badge.textContent = "BALOTAJE";
+    }
+
+    // --- CÁLCULO DE VOTO REAL ESTIMADO ---
+    function getVotoEstimadoReal() {
+        const imagenNeta = aprobacionReal - desaprobacionReal;
+        const factorCaptura = (imagenNeta > 0) ? (imagenNeta / 100.0) * 0.45 : 0.05;
+        return nucleoDuro + (indecisos * factorCaptura);
+    }
+
+    function updateDashboard(feedMsg = null) {
+        document.getElementById('hud-candidate-name').textContent = nombreCandidato;
+
+        const quincenasRestantes = (maxTurnosEtapa - turnoQuincenal) + 1;
+        const semanasRestantes = quincenasRestantes * 2;
+        document.getElementById('hud-time-display').textContent = 
+            `Quincena ${turnoQuincenal} de ${maxTurnosEtapa} | ${semanasRestantes} semana(s) restantes`;
+
+        document.getElementById('hud-funds').textContent = `$${Math.round(fondosPublicos).toLocaleString()}`;
+
+        const votoEst = getVotoEstimadoReal();
+        document.getElementById('hud-voto-est').textContent = `${votoEst.toFixed(1)}%`;
+        document.getElementById('hud-nucleo').textContent = `${nucleoDuro.toFixed(1)}%`;
+
+        document.getElementById('hud-aprob').textContent = `${aprobacionReal.toFixed(1)}%`;
+        document.getElementById('bar-aprob').style.width = `${Math.min(100, Math.max(0, aprobacionReal))}%`;
+
+        document.getElementById('hud-desaprob').textContent = `${desaprobacionReal.toFixed(1)}%`;
+        document.getElementById('bar-desaprob').style.width = `${Math.min(100, Math.max(0, desaprobacionReal))}%`;
+
+        document.getElementById('hud-riesgo').textContent = `${riesgoEscandalo}%`;
+        document.getElementById('bar-riesgo').style.width = `${Math.min(100, Math.max(0, riesgoEscandalo))}%`;
+
+        document.getElementById('hud-coherencia').textContent = `${coherenciaDiscursiva}/100`;
+        document.getElementById('bar-coherencia').style.width = `${Math.min(100, Math.max(0, coherenciaDiscursiva))}%`;
+
+        if (feedMsg) {
+            document.getElementById('feed-display').textContent = feedMsg;
+        }
+    }
+
+    // --- PROCESAMIENTO DE ACCIÓN / FATIGA / ESCÁNDALOS ---
+    function postActionProcessing(catId, msg) {
+        const catStr = catId.toString();
+        if (catStr === ultimaCategoria) {
+            fatigaAccion++;
+        } else {
+            fatigaAccion = 1;
+            ultimaCategoria = catStr;
+        }
+
+        let alertMsg = "";
+        if (fatigaAccion >= 3) {
+            aprobacionReal -= 4.5;
+            desaprobacionReal += 3.0;
+            alertMsg += " [FATIGA] Campaña monotemática (-4.5% aprobación). ";
+        }
+
+        if (riesgoEscandalo >= 75) {
+            aprobacionReal -= 9.0;
+            desaprobacionReal += 10.0;
+            riesgoEscandalo = 30;
+            alertMsg += " [ESCÁNDALO DE CORRUPCIÓN] Filtración de facturas (-9% aprobación, +10% rechazo). ";
+        } else if (riesgoEscandalo >= 50) {
+            aprobacionReal -= 3.5;
+            desaprobacionReal += 4.0;
+            alertMsg += " [FILTRACIÓN PERIODÍSTICA] Denuncia de desvío de partidas (-3.5% aprobación). ";
+        }
+
+        updateDashboard((msg + alertMsg).trim());
+
+        turnoQuincenal++;
+        if (turnoQuincenal > maxTurnosEtapa) {
+            setTimeout(executeScrutiny, 1100);
+        }
+    }
+
+    // --- ACCIÓN 1: REDES SOCIALES ---
+    document.getElementById('btn-act-redes').addEventListener('click', () => {
+        openModal("Campaña en Redes", [
+            {
+                label: "1. Granjas de Bots con Fondos Públicos",
+                sub: "Automatización de tendencias. Infla imagen o ataca opositores.",
+                action: () => {
+                    openModal("Granjas de Bots", [
+                        {
+                            label: "A. Inflar imagen propia",
+                            sub: "+2.5% Aprobación, +8% Riesgo ($34.500)",
+                            action: () => {
+                                const costo = 30000.0 * multiplicadorGasto;
+                                if (fondosPublicos >= costo) {
+                                    fondosPublicos -= costo;
+                                    aprobacionReal += 2.5;
+                                    riesgoEscandalo += 8;
+                                    postActionProcessing(1, "Cuentas coordinadas instalaron tendencias favorables.");
+                                } else {
+                                    riesgoEscandalo += 5;
+                                    postActionProcessing(1, "Fondos insuficientes para servidores. El proveedor filtró datos por impago.");
+                                }
+                            }
+                        },
+                        {
+                            label: "B. Hostigar e insultar opositores",
+                            sub: "+2.0% Desaprobación, Rival -1.5%, +18% Riesgo, -5 Coherencia ($34.500)",
+                            action: () => {
+                                const costo = 30000.0 * multiplicadorGasto;
+                                if (fondosPublicos >= costo) {
+                                    fondosPublicos -= costo;
+                                    desaprobacionReal += 2.0;
+                                    votoOpositor1 -= 1.5;
+                                    riesgoEscandalo += 18;
+                                    coherenciaDiscursiva -= 5;
+                                    postActionProcessing(1, "Ataques masivos erosionaron al rival pero aumentaron tu rechazo.");
+                                } else {
+                                    riesgoEscandalo += 5;
+                                    postActionProcessing(1, "Fondos públicos insuficientes. Se filtró la orden de ataque.");
+                                }
+                            }
+                        }
+                    ]);
+                }
+            },
+            {
+                label: "2. Pagar a Influencers ($45.000)",
+                sub: "+3.5% Aprobación, -2.0% Indecisos, +6% Riesgo",
+                action: () => {
+                    const costo = 45000.0;
+                    if (fondosPublicos >= costo) {
+                        fondosPublicos -= costo;
+                        aprobacionReal += 3.5;
+                        indecisos -= 2.0;
+                        riesgoEscandalo += 6;
+                        postActionProcessing(1, "Influencers promocionaron tu plataforma ante audiencias jóvenes.");
+                    } else {
+                        alert("Fondos insuficientes para creadores de contenido.");
+                    }
+                }
+            },
+            {
+                label: "3. Publicar Videos de ti Mismo Hablando",
+                sub: "Contenido directo en video. Gratuito, define tu perfil discursivo.",
+                action: () => {
+                    openModal("Videos Propios - Temática", [
+                        {
+                            label: "1. Explicar plan de estabilización económica",
+                            sub: "+2.0% Aprobación, +4 Coherencia",
+                            action: () => {
+                                aprobacionReal += 2.0;
+                                coherenciaDiscursiva += 4;
+                                postActionProcessing(1, "Video técnico y sobrio. Fortaleció tu credibilidad económica.");
+                            }
+                        },
+                        {
+                            label: "2. Defender y ampliar derechos laborales",
+                            sub: "+3.0% Aprobación, +1.5% Núcleo, +1.0% Desaprobación",
+                            action: () => {
+                                aprobacionReal += 3.0;
+                                nucleoDuro += 1.5;
+                                desaprobacionReal += 1.0;
+                                postActionProcessing(1, "Discurso enfocado en trabajadores. Respaldo sindical consolidado.");
+                            }
+                        },
+                        {
+                            label: "3. Cuestionar y reducir el rol del Estado",
+                            sub: "+3.0% Núcleo duro, +4.0% Desaprobación",
+                            action: () => {
+                                nucleoDuro += 3.0;
+                                desaprobacionReal += 4.0;
+                                postActionProcessing(1, "Postura frontal anti-estatista. Entusiasma a libertarios pero polariza.");
+                            }
+                        }
+                    ]);
+                }
+            }
+        ]);
+    });
+
+    // --- ACCIÓN 2: ENCUESTA DE OPINIÓN PÚBLICA ---
+    document.getElementById('btn-act-encuesta').addEventListener('click', () => {
+        openModal("Sondeo Electoral", [
+            {
+                label: "1. Muestreo Reducido (Gratuito)",
+                sub: "Margen de error amplio (±6.0%)",
+                action: () => proceedSurvey(1)
+            },
+            {
+                label: "2. Muestreo Masivo ($25.000)",
+                sub: "Alta precisión técnica (±2.0%)",
+                action: () => {
+                    if (fondosPublicos >= 25000) {
+                        fondosPublicos -= 25000;
+                        proceedSurvey(2);
+                    } else {
+                        alert("Fondos insuficientes para muestreo masivo.");
+                    }
+                }
+            }
+        ]);
+    });
+
+    function proceedSurvey(tipo) {
+        const margenRuido = (tipo === 2) ? (rnd.next(-20, 21) / 10.0) : (rnd.next(-60, 61) / 10.0);
+        openModal("¿Deseas adulterar los datos antes de publicarlos en prensa?", [
+            {
+                label: "No, mantener sondeo técnico interno",
+                sub: "Datos reales para planificar la campaña con precisión.",
+                action: () => {
+                    const intencion = getVotoEstimadoReal() + margenRuido;
+                    postActionProcessing(2, `[SONDEO TÉCNICO INTERNO] Intención estimada: ${intencion.toFixed(1)}% (Margen: ±${Math.abs(margenRuido).toFixed(1)}%).`);
+                }
+            },
+            {
+                label: "Sí, inflar números para la prensa (+4% a +8%)",
+                sub: "-8 de coherencia. Crea un clima exitista artificial.",
+                action: () => {
+                    const inflado = rnd.next(40, 80) / 10.0;
+                    const intencion = getVotoEstimadoReal() + margenRuido + inflado;
+                    coherenciaDiscursiva -= 8;
+                    postActionProcessing(2, `[REPORTE ADULTERADO PUBLICADO] Tu candidatura mide: ${intencion.toFixed(1)}%. Cuidado: planificas a ciegas.`);
+                }
+            }
+        ]);
+    }
+
+    // --- ACCIÓN 3: ESTRATEGIAS MEDIÁTICAS ---
+    document.getElementById('btn-act-medios').addEventListener('click', () => {
+        openModal("Estrategias Mediáticas", [
+            {
+                label: "1. Difundir Fake News contra Opositores",
+                sub: "Operaciones encubiertas para horadar intención rival.",
+                action: () => {
+                    openModal("Difusión de Fake News", [
+                        {
+                            label: "Sobresueldos y coimas",
+                            sub: "Rival -2.0% votos | +12% Riesgo de escándalo",
+                            action: () => {
+                                votoOpositor1 -= 2.0;
+                                riesgoEscandalo += 12;
+                                postActionProcessing(3, "El opositor debió salir a defenderse. Daño moderado.");
+                            }
+                        },
+                        {
+                            label: "Complicidad criminalística y narcotráfico",
+                            sub: "Rival -4.0% | +25% Riesgo | -15 Coherencia | +3.0% Desaprobación",
+                            action: () => {
+                                votoOpositor1 -= 4.0;
+                                riesgoEscandalo += 25;
+                                coherenciaDiscursiva -= 15;
+                                desaprobacionReal += 3.0;
+                                postActionProcessing(3, "Operación criminalista instalada en prime time.");
+                            }
+                        }
+                    ]);
+                }
+            },
+            {
+                label: "2. Solicitar Invitación a Medios de TV",
+                sub: "Espacio en piso. La aceptación depende de tu aprobación popular.",
+                action: () => {
+                    const tiradaTv = rnd.next(1, 101);
+                    const aceptan = tiradaTv <= Math.floor(aprobacionReal) + 20;
+
+                    if (aceptan) {
+                        openModal("Enfoque Editorial en Televisión", [
+                            {
+                                label: "Explicar en detalle la propuesta de gobierno",
+                                sub: "+3.0% Aprobación, +5 Coherencia",
+                                action: () => {
+                                    aprobacionReal += 3.0;
+                                    coherenciaDiscursiva += 5;
+                                    postActionProcessing(3, "Entrevista moderada y propositiva. Ganaste votantes indecisos.");
+                                }
+                            },
+                            {
+                                label: "Criticar duramente el modelo económico actual",
+                                sub: "+2.5% Aprobación, Rival -1.5% votos",
+                                action: () => {
+                                    aprobacionReal += 2.5;
+                                    votoOpositor1 -= 1.5;
+                                    postActionProcessing(3, "Crítica económica sólida. Debilitaste al oficialismo.");
+                                }
+                            },
+                            {
+                                label: "Exigir barrer y echar a toda la gente con poder actual",
+                                sub: "+4.0% Núcleo duro, +5.0% Desaprobación",
+                                action: () => {
+                                    nucleoDuro += 4.0;
+                                    desaprobacionReal += 5.0;
+                                    postActionProcessing(3, "Discurso anti-establishment viralizado. Fieles eufóricos, pero subió el rechazo.");
+                                }
+                            }
+                        ]);
+                    } else {
+                        postActionProcessing(3, "Los productores rechazaron la nota. Tu imagen no rinde rating actualmente.");
+                    }
+                }
+            },
+            {
+                label: "3. Pagar Pauta para Propagandas Políticas ($46.000)",
+                sub: "Spots en radio y TV para moldear la percepción pública.",
+                action: () => {
+                    const costo = 40000.0 * multiplicadorGasto;
+                    if (fondosPublicos >= costo) {
+                        openModal("Contenido de Spots Publicitarios", [
+                            {
+                                label: "Spots sobre 'Buscar un cambio real'",
+                                sub: "+3.0% Aprobación, -2.0% Indecisos",
+                                action: () => {
+                                    fondosPublicos -= costo;
+                                    aprobacionReal += 3.0;
+                                    indecisos -= 2.0;
+                                    postActionProcessing(3, "El lema del cambio captó votantes indecisos.");
+                                }
+                            },
+                            {
+                                label: "Spots sobre 'Lucha frontal anticorrupción'",
+                                sub: "Rival 1: -2.0% votos | Rival 2: -1.0% votos",
+                                action: () => {
+                                    fondosPublicos -= costo;
+                                    votoOpositor1 -= 2.0;
+                                    votoOpositor2 -= 1.0;
+                                    postActionProcessing(3, "El foco anticorrupción restó caudal a los rivales.");
+                                }
+                            },
+                            {
+                                label: "Spots sobre 'Unión laboral y productividad'",
+                                sub: "+2.0% Aprobación, +5 Coherencia",
+                                action: () => {
+                                    fondosPublicos -= costo;
+                                    aprobacionReal += 2.0;
+                                    coherenciaDiscursiva += 5;
+                                    postActionProcessing(3, "Spots de unión laboral mejoraron la percepción institucional.");
+                                }
+                            }
+                        ]);
+                    } else {
+                        alert("No dispones de fondos públicos suficientes para pauta publicitaria.");
+                    }
+                }
+            }
+        ]);
+    });
+
+    // --- ACCIÓN 4: AYUDA SOCIAL ---
+    document.getElementById('btn-act-social').addEventListener('click', () => {
+        openModal("Política Pública", [
+            {
+                label: "Confirmar anuncio de paquete de asistencia directa",
+                sub: "+3.5% Aprobación, -2.5% Indecisos (si coherencia < 60 suma +2% rechazo)",
+                action: () => {
+                    aprobacionReal += 3.5;
+                    indecisos -= 2.5;
+
+                    let msg = "La propuesta social fue recibida favorablemente.";
+                    if (coherenciaDiscursiva < 60) {
+                        desaprobacionReal += 2.0;
+                        msg = "El anuncio se percibe como oportunismo electoral por tu historial previo.";
+                    }
+                    postActionProcessing(4, msg);
+                }
+            }
+        ]);
+    });
+
+    // --- ACCIÓN 5: ACTO PÚBLICO MASIVO ---
+    document.getElementById('btn-act-acto').addEventListener('click', () => {
+        const asistentes = Math.max(1000, Math.floor((nucleoDuro * 1200) + (aprobacionReal * 350) - (riesgoEscandalo * 450)));
+
+        openModal(`Convocatoria a Acto Público (${asistentes.toLocaleString()} asistentes)`, [
+            {
+                label: "1. Reclamar por falta de recursos y desidia estatal",
+                sub: "+2.0% Aprobación",
+                action: () => {
+                    aprobacionReal += 2.0;
+                    postActionProcessing(5, `[CONVOCATORIA] Asistieron ${asistentes.toLocaleString()} personas. Discurso equilibrado; consolidaste clase media descontenta.`);
+                }
+            },
+            {
+                label: "2. Incitar al odio contra la ayuda social y los 'vagos'",
+                sub: "+3.0% Núcleo duro, +6.0% Desaprobación",
+                action: () => {
+                    nucleoDuro += 3.0;
+                    desaprobacionReal += 6.0;
+                    postActionProcessing(5, `[CONVOCATORIA] Asistieron ${asistentes.toLocaleString()} personas. El núcleo duro aplaudió eufórico, pero tu techo electoral cayó drásticamente.`);
+                }
+            },
+            {
+                label: "3. Llamar a la unión nacional y respeto mutuo",
+                sub: "Efectivo si tu perfil está limpio; letal si hay escándalo (>35) o baja coherencia (<60)",
+                action: () => {
+                    if (riesgoEscandalo > 35 || coherenciaDiscursiva < 60) {
+                        aprobacionReal -= 5.0;
+                        desaprobacionReal += 4.0;
+                        postActionProcessing(5, `[CONVOCATORIA] ¡Cinismo expuesto ante ${asistentes.toLocaleString()} personas! Pediste unión tras semanas de ataques encubiertos.`);
+                    } else {
+                        aprobacionReal += 4.0;
+                        indecisos -= 3.0;
+                        postActionProcessing(5, `[CONVOCATORIA] Mensaje pacificador creíble ante ${asistentes.toLocaleString()} personas. Atrajo votos moderados.`);
+                    }
+                }
+            }
+        ]);
+    });
+
+    // --- ESCRUTINIO ELECTORAL CON REGLAS DE PROGRAM_5.CS ---
+    function executeScrutiny() {
+        showScreen('scrutiny');
+
+        const stageTitle = (etapa === 1) ? "PASO (Primarias Abiertas)" :
+                           (etapa === 2) ? "Elecciones Generales (Primera Vuelta)" : "Balotaje (Segunda Vuelta)";
+        document.getElementById('scrutiny-stage-title').textContent = `Escrutinio Definitivo: ${stageTitle}`;
+
+        const bar = document.getElementById('bar-scrutiny');
+        const textProg = document.getElementById('scrutiny-progress-text');
+        const verdictBox = document.getElementById('scrutiny-verdict');
+        const btnNext = document.getElementById('btn-scrutiny-next');
+
+        bar.style.width = '0%';
+        btnNext.style.display = 'none';
+        verdictBox.textContent = '';
+
+        // Cálculo electoral oficial de Program_5.cs
+        const margenFinal = (aprobacionReal - desaprobacionReal);
+        const participacionIndecisa = (margenFinal > 0) ? (margenFinal / 100.0) * indecisos : 0.0;
+        let resultadoCandidato = nucleoDuro + participacionIndecisa;
+
+        // Acotamiento en PASO y Generales
+        if (etapa < 3) {
+            if (resultadoCandidato > 70.0) resultadoCandidato = 70.0;
+            if (resultadoCandidato < 10.0) resultadoCandidato = 10.0;
+        }
+
+        // Cómputo oficial en 4 bloques
+        let pct = 0;
+        const interval = setInterval(() => {
+            pct += 25;
+            bar.style.width = `${pct}%`;
+            textProg.textContent = `Cómputo provisorio oficial: ${pct}% de las mesas escrutadas.`;
+
+            if (pct >= 100) {
+                clearInterval(interval);
+                renderScrutinyResults(resultadoCandidato);
+            }
+        }, 300);
+    }
+
+    function renderScrutinyResults(resCand) {
+        document.getElementById('tally-cand-name').textContent = `RESULTADO DE ${nombreCandidato.toUpperCase()}:`;
+        document.getElementById('tally-cand-val').textContent = `${resCand.toFixed(2)}%`;
+
+        const rowOp1 = document.getElementById('row-op1');
+        const rowOp2 = document.getElementById('row-op2');
+        const verdict = document.getElementById('scrutiny-verdict');
+        const btnNext = document.getElementById('btn-scrutiny-next');
+
+        if (etapa === 1) { // Fin PASO
+            document.getElementById('tally-op1-val').textContent = `${votoOpositor1.toFixed(2)}%`;
+            document.getElementById('tally-op2-val').textContent = `${votoOpositor2.toFixed(2)}%`;
+            verdict.textContent = "Clasificación asegurada a Generales sin interna propia. El porcentaje obtenido fija tu financiamiento para el tramo definitivo.";
+            btnNext.textContent = "Iniciar Campaña a Primera Vuelta";
+            btnNext.onclick = () => {
+                etapa = 2;
+                initStage();
+            };
+        } else if (etapa === 2) { // Fin Generales
+            document.getElementById('tally-op1-val').textContent = `${votoOpositor1.toFixed(2)}%`;
+            document.getElementById('tally-op2-val').textContent = `${votoOpositor2.toFixed(2)}%`;
+
+            if (resCand >= 45.0 || (resCand >= 40.0 && (resCand - votoOpositor1) >= 10.0)) {
+                verdict.textContent = `¡TRIUNFO HISTÓRICO EN PRIMERA VUELTA! ¡Felicitaciones al presidente electo ${nombreCandidato}!`;
+                btnNext.textContent = "Finalizar Simulación";
+                btnNext.onclick = () => endSimulation(true, "Victoria constitucional en Primera Vuelta.");
+            } else if (resCand < votoOpositor1 && resCand < votoOpositor2) {
+                verdict.textContent = "Quedaste en tercer lugar. Has quedado fuera de la carrera presidencial.";
+                btnNext.textContent = "Finalizar";
+                btnNext.onclick = () => endSimulation(false, "No lograste clasificar al balotaje.");
+            } else {
+                verdict.textContent = "Ningún candidato superó el umbral constitucional. ¡HAY BALOTAJE! El terreno se polariza de forma binaria.";
+
+                // Polarización de balotaje según Program_5.cs
+                const botinTerceraFuerza = votoOpositor2;
+                const sesgoPropio = (100.0 - desaprobacionReal) / 100.0;
+                const captadoTerceros = botinTerceraFuerza * (sesgoPropio * 0.6);
+
+                nucleoDuro = resCand + captadoTerceros;
+                indecisos = 8.0; // En balotaje casi no quedan indecisos
+
+                btnNext.textContent = "Entrar al Balotaje";
+                btnNext.onclick = () => {
+                    etapa = 3;
+                    initStage();
+                };
+            }
+        } else if (etapa === 3) { // Fin Balotaje
+            rowOp2.style.display = 'none';
+
+            // Normalización según Program_5.cs
+            let finalBalotaje = resCand;
+            if (finalBalotaje > 65.0) finalBalotaje = 62.0 + (rnd.next(0, 30) / 10.0);
+            if (finalBalotaje < 35.0) finalBalotaje = 38.0 + (rnd.next(0, 30) / 10.0);
+
+            const votosRival = 100.0 - finalBalotaje;
+            document.getElementById('tally-cand-val').textContent = `${finalBalotaje.toFixed(2)}%`;
+            rowOp1.querySelector('span:first-child').textContent = "Opositor Final:";
+            document.getElementById('tally-op1-val').textContent = `${votosRival.toFixed(2)}%`;
+
+            const redondeado = Math.round(finalBalotaje);
+
+            if (redondeado >= 50) {
+                verdict.textContent = "¡FELICIDADES! Has ganado el Balotaje y eres el nuevo Presidente de la Nación.";
+                btnNext.textContent = "Finalizar";
+                btnNext.onclick = () => endSimulation(true, "Has ganado el Balotaje.");
+            } else if (redondeado >= 48) {
+                verdict.textContent = "[DERROTA AJUSTADA] Perdiste por menos de dos puntos. La polarización consolidó el voto anti-candidato de tu adversario.";
+                btnNext.textContent = "Finalizar";
+                btnNext.onclick = () => endSimulation(false, "Derrota ajustada en segunda vuelta.");
+            } else {
+                verdict.textContent = "Derrota electoral contundente. El techo de rechazo te impidió construir mayorías.";
+                btnNext.textContent = "Finalizar";
+                btnNext.onclick = () => endSimulation(false, "El caudal opositor superó ampliamente tu fórmula.");
+            }
+        }
+
+        btnNext.style.display = 'block';
+    }
+
+    function endSimulation(victoria, razon) {
+        showScreen('scrutiny');
+        const verdict = document.getElementById('scrutiny-verdict');
+        verdict.innerHTML = `
+            <div style="font-size: 1.6rem; margin-bottom: 6px;">${victoria ? '🏆' : '🏛️'}</div>
+            <strong style="color: var(--accent-gold); font-size: 1.15rem;">${victoria ? '¡Elección Ganada!' : 'Fin de la Carrera'}</strong>
+            <p style="margin-top: 6px; color: var(--text-dim);">${razon}</p>
+        `;
+        const btnNext = document.getElementById('btn-scrutiny-next');
+        btnNext.textContent = "Volver al Menú Principal";
+        btnNext.onclick = () => showScreen('home');
+    }
+</script>
+</body>
+</html>
